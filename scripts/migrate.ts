@@ -1,12 +1,13 @@
 /**
  * Creates all tables and indexes in the target database.
+ * Uses pg.Pool so it works with both local Postgres and Neon.
  *
  * Usage:
- *   DATABASE_URL=<connection_string> npx ts-node scripts/migrate.ts
+ *   DATABASE_URL=<connection_string> npx ts-node --project tsconfig.scripts.json scripts/migrate.ts
  *
  * Safe to run multiple times — all statements use IF NOT EXISTS.
  */
-import { neon } from '@neondatabase/serverless'
+import { Pool } from 'pg'
 import { CREATE_TABLES } from '../lib/db/schema'
 
 async function migrate() {
@@ -15,11 +16,13 @@ async function migrate() {
     throw new Error('DATABASE_URL environment variable is not set')
   }
 
-  const sql = neon(databaseUrl)
+  const pool = new Pool({ connectionString: databaseUrl })
 
   console.log('Running migrations...')
-  await sql.unsafe(CREATE_TABLES)
+  await pool.query(CREATE_TABLES)
   console.log('Migrations complete.')
+
+  await pool.end()
 }
 
 migrate().catch((err) => {
