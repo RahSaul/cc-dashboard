@@ -1,0 +1,251 @@
+import { sql } from './index'
+import type {
+  Account,
+  Transaction,
+  SpendingByDay,
+  CategoryBreakdown,
+  AggregateStats,
+} from '@/types'
+
+// ---------------------------------------------------------------------------
+// Plaid items
+// ---------------------------------------------------------------------------
+
+export async function upsertPlaidItem(item: {
+  id: string
+  access_token: string
+  institution_id: string | null
+  institution_name: string | null
+}): Promise<void> {
+  await sql`
+    INSERT INTO plaid_items (id, access_token, institution_id, institution_name)
+    VALUES (${item.id}, ${item.access_token}, ${item.institution_id}, ${item.institution_name})
+    ON CONFLICT (id) DO UPDATE SET
+      access_token     = EXCLUDED.access_token,
+      institution_id   = EXCLUDED.institution_id,
+      institution_name = EXCLUDED.institution_name
+  `
+}
+
+export async function getAllPlaidItems(): Promise<
+  {
+    id: string
+    access_token: string
+    transactions_cursor: string | null
+  }[]
+> {
+  const rows = await sql`
+    SELECT id, access_token, transactions_cursor
+    FROM plaid_items
+    ORDER BY created_at ASC
+  `
+  return rows as { id: string; access_token: string; transactions_cursor: string | null }[]
+}
+
+export async function updatePlaidItemCursor(
+  itemId: string,
+  cursor: string,
+): Promise<void> {
+  await sql`
+    UPDATE plaid_items
+    SET transactions_cursor = ${cursor},
+        last_synced_at      = NOW()
+    WHERE id = ${itemId}
+  `
+}
+
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+
+export async function upsertAccount(account: Account): Promise<void> {
+  await sql`
+    INSERT INTO accounts (
+      id, item_id, name, official_name, type, subtype,
+      current_balance, available_credit, credit_limit,
+      currency_code, last_synced_at
+    ) VALUES (
+      ${account.id}, ${account.item_id}, ${account.name},
+      ${account.official_name}, ${account.type}, ${account.subtype},
+      ${account.current_balance}, ${account.available_credit},
+      ${account.credit_limit}, ${account.currency_code}, NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      name             = EXCLUDED.name,
+      official_name    = EXCLUDED.official_name,
+      current_balance  = EXCLUDED.current_balance,
+      available_credit = EXCLUDED.available_credit,
+      credit_limit     = EXCLUDED.credit_limit,
+      last_synced_at   = NOW()
+  `
+}
+
+export async function getAllAccounts(): Promise<Account[]> {
+  const rows = await sql`
+    SELECT
+      id, item_id, name, official_name, type, subtype,
+      current_balance, available_credit, credit_limit,
+      currency_code,
+      last_synced_at::text  AS last_synced_at,
+      created_at::text      AS created_at
+    FROM accounts
+    ORDER BY created_at ASC
+  `
+  return rows as Account[]
+}
+
+// ---------------------------------------------------------------------------
+// Transactions
+// ---------------------------------------------------------------------------
+
+export async function upsertTransactions(
+  transactions: Transaction[],
+): Promise<void> {
+  if (transactions.length === 0) return
+
+  for (const t of transactions) {
+    await sql`
+      INSERT INTO transactions (
+        id, account_id, amount, currency_code, name, merchant_name,
+        category_primary, category_detail, date, authorized_date,
+        pending, updated_at
+      ) VALUES (
+        ${t.id}, ${t.account_id}, ${t.amount}, ${t.currency_code},
+        ${t.name}, ${t.merchant_name}, ${t.category_primary},
+        ${t.category_detail}, ${t.date}, ${t.authorized_date},
+        ${t.pending}, NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        amount           = EXCLUDED.amount,
+        pending          = EXCLUDED.pending,
+        merchant_name    = EXCLUDED.merchant_name,
+        category_primary = EXCLUDED.category_primary,
+        category_detail  = EXCLUDED.category_detail,
+        updated_at       = NOW()
+    `
+  }
+}
+
+export async function deleteTransactions(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  await sql`
+    DELETE FROM transactions WHERE id = ANY(${ids})
+  `
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard queries (read-only, no Plaid calls)
+// ---------------------------------------------------------------------------
+
+export async function getRecentTransactions(
+  accountId?: string,
+  days = 30,
+): Promise<Transaction[]> {
+  if (accountId) {
+    const rows = await sql`
+      SELECT
+        id, account_id, amount::float AS amount, currency_code,
+        name, merchant_name, category_primary, category_detail,
+        date::text AS date, authorized_date::text AS authorized_date,
+        pending,
+        created_at::text AS created_at,
+        updated_at::text AS updated_at
+      FROM transactions
+      WHERE account_id = ${accountId}
+        AND date >= NOW() - (${days} || ' days')::interval
+      ORDER BY date DESC, created_at DESC
+      LIMIT 20
+    `
+    return rows as Transaction[]
+  }
+
+  const rows = await sql`
+    SELECT
+      id, account_id, amount::float AS amount, currency_code,
+      name, merchant_name, category_primary, category_detail,
+      date::text AS date, authorized_date::text AS authorized_date,
+      pending,
+      created_at::text AS created_at,
+      updated_at::text AS updated_at
+    FROM transactions
+    WHERE date >= NOW() - (${days} || ' days')::interval
+    ORDER BY date DESC, created_at DESC
+    LIMIT 20
+  `
+  return rows as Transaction[]
+}
+
+export async function getSpendingByDay(
+  accountId?: string,
+  days = 30,
+): Promise<SpendingByDay[]> {
+  if (accountId) {
+    const rows = await sql`
+      SELECT
+        date::text         AS date,
+        SUM(amount)::float AS total
+      FROM transactions
+      WHERE account_id = ${accountId}
+        AND date >= NOW() - (${days} || ' days')::interval
+        AND pending = FALSE
+      GROUP BY date
+      ORDER BY date ASC
+    `
+    return rows as SpendingByDay[]
+  }
+
+  const rows = await sql`
+    SELECT
+      date::text         AS date,
+      SUM(amount)::float AS total
+    FROM transactions
+    WHERE date >= NOW() - (${days} || ' days')::interval
+      AND pending = FALSE
+    GROUP BY date
+    ORDER BY date ASC
+  `
+  return rows as SpendingByDay[]
+}
+
+export async function getCategoryBreakdown(
+  accountId?: string,
+  days = 30,
+): Promise<CategoryBreakdown[]> {
+  if (accountId) {
+    const rows = await sql`
+      SELECT
+        COALESCE(category_primary, 'Other') AS category,
+        SUM(amount)::float                  AS total
+      FROM transactions
+      WHERE account_id = ${accountId}
+        AND date >= NOW() - (${days} || ' days')::interval
+        AND pending = FALSE
+      GROUP BY category_primary
+      ORDER BY total DESC
+    `
+    return rows as CategoryBreakdown[]
+  }
+
+  const rows = await sql`
+    SELECT
+      COALESCE(category_primary, 'Other') AS category,
+      SUM(amount)::float                  AS total
+    FROM transactions
+    WHERE date >= NOW() - (${days} || ' days')::interval
+      AND pending = FALSE
+    GROUP BY category_primary
+    ORDER BY total DESC
+  `
+  return rows as CategoryBreakdown[]
+}
+
+export async function getAggregateStats(): Promise<AggregateStats> {
+  const rows = await sql`
+    SELECT
+      COALESCE(SUM(current_balance), 0)::float  AS "totalBalance",
+      COALESCE(SUM(credit_limit), 0)::float     AS "totalCreditLimit",
+      COALESCE(SUM(available_credit), 0)::float AS "totalAvailableCredit"
+    FROM accounts
+  `
+  return rows[0] as AggregateStats
+}
