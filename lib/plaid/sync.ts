@@ -2,8 +2,11 @@ import { plaidClient } from './client'
 import type { Account, Transaction } from '@/types'
 
 export async function fetchBalances(accessToken: string): Promise<Account[]> {
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
   const response = await plaidClient.accountsBalanceGet({
     access_token: accessToken,
+    options: { min_last_updated_datetime: yesterday },
   })
 
   return response.data.accounts
