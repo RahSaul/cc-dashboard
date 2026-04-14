@@ -37,7 +37,7 @@ async function handleSync(request: NextRequest): Promise<Response> {
   let totalTransactionsAdded = 0
 
   for (const item of items) {
-    // Fetch and upsert balances
+    // Fetch and upsert balances (credit accounts only)
     const accounts = await fetchBalances(item.access_token)
     for (const account of accounts) {
       await upsertAccount({ ...account, item_id: item.id })
@@ -45,16 +45,21 @@ async function handleSync(request: NextRequest): Promise<Response> {
     totalAccountsUpdated += accounts.length
 
     // Fetch and upsert transactions (cursor-based incremental sync)
+    // Filter to only accounts we saved — avoids FK violations for non-credit accounts
+    const savedAccountIds = new Set(accounts.map((a) => a.id))
     const { added, modified, removed, nextCursor } = await fetchTransactions(
       item.access_token,
       item.transactions_cursor,
     )
 
+    const filteredAdded = added.filter((t) => savedAccountIds.has(t.account_id))
+    const filteredModified = modified.filter((t) => savedAccountIds.has(t.account_id))
+
     if (removed.length > 0) {
       await deleteTransactions(removed)
     }
-    if (added.length > 0 || modified.length > 0) {
-      await upsertTransactions([...added, ...modified])
+    if (filteredAdded.length > 0 || filteredModified.length > 0) {
+      await upsertTransactions([...filteredAdded, ...filteredModified])
     }
 
     await updatePlaidItemCursor(item.id, nextCursor)
