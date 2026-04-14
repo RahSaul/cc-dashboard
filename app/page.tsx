@@ -1,12 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  FIXTURE_DASHBOARD_DATA,
-  FIXTURE_TRANSACTIONS,
-  FIXTURE_SPENDING_BY_DAY,
-  FIXTURE_CATEGORY_BREAKDOWN,
-} from '@/lib/fixtures'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import AccountSelector from '@/components/dashboard/AccountSelector'
 import BalanceCard from '@/components/dashboard/BalanceCard'
 import CreditUtilizationCard from '@/components/dashboard/CreditUtilizationCard'
@@ -19,19 +14,27 @@ export default function Home() {
     null,
   )
 
-  const { accounts, aggregate } = FIXTURE_DASHBOARD_DATA
+  const { data, isLoading, error } = useDashboardData(selectedAccountId)
 
-  const transactions = selectedAccountId
-    ? FIXTURE_TRANSACTIONS.filter((t) => t.account_id === selectedAccountId)
-    : FIXTURE_TRANSACTIONS
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <p className="text-sm text-red-500">
+          Failed to load dashboard data. Is the database connected?
+        </p>
+      </div>
+    )
+  }
 
-  const spendingByDay = selectedAccountId
-    ? computeSpendingByDay(transactions)
-    : FIXTURE_SPENDING_BY_DAY
+  if (isLoading || !data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <p className="text-sm text-zinc-400">Loading...</p>
+      </div>
+    )
+  }
 
-  const categoryBreakdown = selectedAccountId
-    ? computeCategoryBreakdown(transactions)
-    : FIXTURE_CATEGORY_BREAKDOWN
+  const { accounts, aggregate, recentTransactions, spendingByDay, categoryBreakdown } = data
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -66,37 +69,9 @@ export default function Home() {
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <CategoryBreakdown data={categoryBreakdown} />
-          <RecentTransactions transactions={transactions} />
+          <RecentTransactions transactions={recentTransactions} />
         </div>
       </div>
     </div>
   )
-}
-
-function computeSpendingByDay(
-  transactions: typeof FIXTURE_TRANSACTIONS,
-): { date: string; total: number }[] {
-  const byDay = new Map<string, number>()
-  for (const txn of transactions) {
-    byDay.set(txn.date, (byDay.get(txn.date) ?? 0) + txn.amount)
-  }
-  return [...byDay.entries()]
-    .map(([date, total]) => ({ date, total: Math.round(total * 100) / 100 }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-function computeCategoryBreakdown(
-  transactions: typeof FIXTURE_TRANSACTIONS,
-): { category: string; total: number }[] {
-  const byCat = new Map<string, number>()
-  for (const txn of transactions) {
-    const cat = txn.category_primary ?? 'Other'
-    byCat.set(cat, (byCat.get(cat) ?? 0) + txn.amount)
-  }
-  return [...byCat.entries()]
-    .map(([category, total]) => ({
-      category,
-      total: Math.round(total * 100) / 100,
-    }))
-    .sort((a, b) => b.total - a.total)
 }
