@@ -9,6 +9,7 @@ import SpendingChart from '@/components/dashboard/SpendingChart'
 import CategoryBreakdown from '@/components/dashboard/CategoryBreakdown'
 import RecentTransactions from '@/components/dashboard/RecentTransactions'
 import CardManagerModal from '@/components/dashboard/CardManagerModal'
+import { handleSignOut } from '@/app/actions/auth'
 
 export default function Home() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
@@ -76,6 +77,14 @@ export default function Home() {
             >
               {syncing ? 'Syncing…' : 'Sync'}
             </button>
+            <form action={handleSignOut}>
+              <button
+                type="submit"
+                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
 
