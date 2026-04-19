@@ -33,6 +33,7 @@ export default function CardManagerModal({
 }: CardManagerModalProps) {
   const [removing, setRemoving] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
 
   const groups = groupByItem(accounts)
 
@@ -55,9 +56,15 @@ export default function CardManagerModal({
     }
   }
 
-  function handleSuccess() {
-    onMutate()
-    onClose()
+  async function handleSuccess() {
+    setSyncing(true)
+    try {
+      await fetch('/api/sync/trigger', { method: 'POST' })
+    } finally {
+      setSyncing(false)
+      onMutate()
+      onClose()
+    }
   }
 
   return (
@@ -88,7 +95,11 @@ export default function CardManagerModal({
 
           {/* Add card */}
           <div className="mb-5">
-            <PlaidLinkButton onSuccess={handleSuccess} />
+            {syncing ? (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">Syncing account data…</p>
+            ) : (
+              <PlaidLinkButton onSuccess={handleSuccess} />
+            )}
           </div>
 
           {/* Divider */}
