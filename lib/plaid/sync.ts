@@ -24,6 +24,7 @@ export async function fetchBalances(accessToken: string): Promise<Account[]> {
       currency_code: a.balances.iso_currency_code ?? 'USD',
       last_synced_at: null,
       created_at: new Date().toISOString(),
+      institution_name: null,
     }))
 }
 

@@ -31,6 +31,7 @@ export const FIXTURE_ACCOUNTS: Account[] = [
     currency_code: 'USD',
     last_synced_at: '2026-04-13T10:00:00Z',
     created_at: '2026-01-15T08:00:00Z',
+    institution_name: 'Chase',
   },
   {
     id: ACCOUNT_CITI_ID,
@@ -45,6 +46,7 @@ export const FIXTURE_ACCOUNTS: Account[] = [
     currency_code: 'USD',
     last_synced_at: '2026-04-13T10:00:00Z',
     created_at: '2026-02-01T08:00:00Z',
+    institution_name: 'Citi',
   },
 ]
 

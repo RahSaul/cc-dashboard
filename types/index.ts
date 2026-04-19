@@ -11,6 +11,7 @@ export interface Account {
   currency_code: string
   last_synced_at: string | null
   created_at: string
+  institution_name: string | null
 }
 
 export interface Transaction {

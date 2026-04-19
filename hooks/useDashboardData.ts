@@ -13,15 +13,16 @@ export function useDashboardData(accountId?: string | null): {
   data: DashboardData | undefined
   isLoading: boolean
   error: Error | undefined
+  mutate: () => void
 } {
   const url = accountId
     ? `/api/dashboard?accountId=${encodeURIComponent(accountId)}`
     : '/api/dashboard'
 
-  const { data, error, isLoading } = useSWR<DashboardData>(url, fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<DashboardData>(url, fetcher, {
     refreshInterval: 60_000,
     revalidateOnFocus: false,
   })
 
-  return { data, isLoading, error }
+  return { data, isLoading, error, mutate }
 }

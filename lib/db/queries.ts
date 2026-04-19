@@ -52,6 +52,14 @@ export async function updatePlaidItemCursor(
   )
 }
 
+export async function deletePlaidItem(itemId: string): Promise<number> {
+  const { rowCount } = await pool.query(
+    `DELETE FROM plaid_items WHERE id = $1`,
+    [itemId],
+  )
+  return rowCount ?? 0
+}
+
 // ---------------------------------------------------------------------------
 // Accounts
 // ---------------------------------------------------------------------------
@@ -81,12 +89,14 @@ export async function upsertAccount(account: Account): Promise<void> {
 export async function getAllAccounts(): Promise<Account[]> {
   const { rows } = await pool.query(
     `SELECT
-       id, item_id, name, official_name, type, subtype,
-       current_balance, available_credit, credit_limit, currency_code,
-       last_synced_at::text AS last_synced_at,
-       created_at::text     AS created_at
-     FROM accounts
-     ORDER BY created_at ASC`,
+       a.id, a.item_id, a.name, a.official_name, a.type, a.subtype,
+       a.current_balance, a.available_credit, a.credit_limit, a.currency_code,
+       a.last_synced_at::text AS last_synced_at,
+       a.created_at::text     AS created_at,
+       pi.institution_name
+     FROM accounts a
+     JOIN plaid_items pi ON pi.id = a.item_id
+     ORDER BY a.created_at ASC`,
   )
   return rows as Account[]
 }

@@ -8,13 +8,18 @@ import CreditUtilizationCard from '@/components/dashboard/CreditUtilizationCard'
 import SpendingChart from '@/components/dashboard/SpendingChart'
 import CategoryBreakdown from '@/components/dashboard/CategoryBreakdown'
 import RecentTransactions from '@/components/dashboard/RecentTransactions'
+import CardManagerModal from '@/components/dashboard/CardManagerModal'
 
 export default function Home() {
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
-    null,
-  )
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
+  const [manageOpen, setManageOpen] = useState(false)
 
-  const { data, isLoading, error } = useDashboardData(selectedAccountId)
+  const { data, isLoading, error, mutate } = useDashboardData(selectedAccountId)
+
+  function handleMutate() {
+    setSelectedAccountId(null)
+    mutate()
+  }
 
   if (error) {
     return (
@@ -48,8 +53,17 @@ export default function Home() {
             accounts={accounts}
             selectedAccountId={selectedAccountId}
             onSelect={setSelectedAccountId}
+            onManageCards={() => setManageOpen(true)}
           />
         </div>
+
+        {manageOpen && (
+          <CardManagerModal
+            accounts={accounts}
+            onClose={() => setManageOpen(false)}
+            onMutate={handleMutate}
+          />
+        )}
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
           <BalanceCard
