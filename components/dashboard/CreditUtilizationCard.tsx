@@ -35,16 +35,15 @@ export default function CreditUtilizationCard({
 
       <div className="mt-4 space-y-4">
         {accounts.map((account) => {
-          const balance = account.current_balance ?? 0
           const limit = account.credit_limit ?? 1
-          const remaining = limit - balance
-          const utilization = Math.round((remaining / limit) * 100)
+          const available = account.available_credit ?? (limit - (account.current_balance ?? 0))
+          const utilization = Math.round(((limit - available) / limit) * 100)
           const isSelected =
             selectedAccountId === null || selectedAccountId === account.id
           const barColor =
-            utilization < 30
+            utilization > 70
               ? 'bg-red-500'
-              : utilization < 70
+              : utilization > 30
                 ? 'bg-amber-500'
                 : 'bg-emerald-500'
 
@@ -97,15 +96,15 @@ export default function CreditUtilizationCard({
               </button>
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Utilization shows how much of your credit limit is still available.
+              Utilization shows how much of your credit limit has been used, based on the real-time available balance reported by your bank.
             </p>
             <div className="mt-3 rounded-lg bg-zinc-50 p-3 font-mono text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-              (limit − balance) ÷ limit × 100
+              (limit − available_credit) ÷ limit × 100
             </div>
             <div className="mt-4 space-y-2 text-xs text-zinc-500 dark:text-zinc-400">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-3 rounded-full bg-emerald-500" />
-                <span>Above 70% — plenty of credit remaining</span>
+                <span>Below 30% — healthy usage</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-3 rounded-full bg-amber-500" />
@@ -113,7 +112,7 @@ export default function CreditUtilizationCard({
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-3 rounded-full bg-red-500" />
-                <span>Below 30% — most of your limit is used</span>
+                <span>Above 70% — most of your limit is used</span>
               </div>
             </div>
           </div>
