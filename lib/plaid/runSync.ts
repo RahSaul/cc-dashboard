@@ -39,17 +39,21 @@ export async function runSync(triggeredBy: string): Promise<SyncResult> {
     return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
   }
 
-  const cooldownMs = parseInt(process.env.SYNC_COOLDOWN_MINUTES ?? '30', 10) * 60_000
-  const lastSyncRow = await getLastSyncInfo()
-  if (lastSyncRow) {
-    const ageMs = Date.now() - lastSyncRow.synced_at.getTime()
-    if (ageMs < cooldownMs) {
-      console.log(`[runSync] Cooldown active — last sync was ${Math.round(ageMs / 60_000)}m ago`)
-      return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
+  const items = await getAllPlaidItems()
+
+  const hasNewItems = items.some((item) => !item.last_synced_at)
+
+  if (!hasNewItems) {
+    const cooldownMs = parseInt(process.env.SYNC_COOLDOWN_MINUTES ?? '30', 10) * 60_000
+    const lastSyncRow = await getLastSyncInfo()
+    if (lastSyncRow) {
+      const ageMs = Date.now() - lastSyncRow.synced_at.getTime()
+      if (ageMs < cooldownMs) {
+        console.log(`[runSync] Cooldown active — last sync was ${Math.round(ageMs / 60_000)}m ago`)
+        return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
+      }
     }
   }
-
-  const items = await getAllPlaidItems()
 
   if (items.length === 0) {
     return { synced: true, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }

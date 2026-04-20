@@ -29,10 +29,10 @@ export async function upsertPlaidItem(item: {
 }
 
 export async function getAllPlaidItems(): Promise<
-  { id: string; access_token: string; transactions_cursor: string | null }[]
+  { id: string; access_token: string; transactions_cursor: string | null; last_synced_at: Date | null }[]
 > {
   const { rows } = await pool.query(
-    `SELECT id, access_token, transactions_cursor
+    `SELECT id, access_token, transactions_cursor, last_synced_at
      FROM plaid_items
      ORDER BY created_at ASC`,
   )
