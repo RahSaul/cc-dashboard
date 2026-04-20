@@ -163,4 +163,5 @@ export const FIXTURE_DASHBOARD_DATA: DashboardData = {
   recentTransactions: FIXTURE_TRANSACTIONS,
   spendingByDay: FIXTURE_SPENDING_BY_DAY,
   categoryBreakdown: FIXTURE_CATEGORY_BREAKDOWN,
+  lastSync: null,
 }
