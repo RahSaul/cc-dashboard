@@ -8,7 +8,7 @@ interface SpendingChartProps {
 }
 
 function formatCurrency(value: number): string {
-  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 }
 
 export default function SpendingChart({ data }: SpendingChartProps) {
@@ -35,6 +35,8 @@ export default function SpendingChart({ data }: SpendingChartProps) {
         showLegend={false}
         showGradient={true}
         curveType="monotone"
+        yAxisWidth={72}
+        tickGap={8}
       />
     </div>
   )
