@@ -6,9 +6,10 @@ import {
   deleteTransactions,
   updatePlaidItemCursor,
   countTodaySyncs,
-  getLastSyncTime,
+  getLastSyncInfo,
   logSync,
 } from '@/lib/db/queries'
+import type { LastSyncInfo } from '@/types'
 
 export interface SyncResult {
   synced: boolean
@@ -17,7 +18,20 @@ export interface SyncResult {
   transactionsAdded: number
 }
 
-export async function runSync(): Promise<SyncResult> {
+export function buildLastSyncInfo(
+  row: { synced_at: Date; triggered_by: string | null } | null,
+): LastSyncInfo | null {
+  if (!row) return null
+  const cooldownMs = parseInt(process.env.SYNC_COOLDOWN_MINUTES ?? '30', 10) * 60_000
+  const ageMs = Date.now() - row.synced_at.getTime()
+  return {
+    at: row.synced_at.toISOString(),
+    by: row.triggered_by,
+    cooldownRemainingMs: Math.max(0, cooldownMs - ageMs),
+  }
+}
+
+export async function runSync(triggeredBy: string): Promise<SyncResult> {
   const maxDailySyncs = parseInt(process.env.MAX_DAILY_SYNCS ?? '10', 10)
   const todaySyncs = await countTodaySyncs()
   if (todaySyncs >= maxDailySyncs) {
@@ -26,9 +40,9 @@ export async function runSync(): Promise<SyncResult> {
   }
 
   const cooldownMs = parseInt(process.env.SYNC_COOLDOWN_MINUTES ?? '30', 10) * 60_000
-  const lastSync = await getLastSyncTime()
-  if (lastSync) {
-    const ageMs = Date.now() - lastSync.getTime()
+  const lastSyncRow = await getLastSyncInfo()
+  if (lastSyncRow) {
+    const ageMs = Date.now() - lastSyncRow.synced_at.getTime()
     if (ageMs < cooldownMs) {
       console.log(`[runSync] Cooldown active — last sync was ${Math.round(ageMs / 60_000)}m ago`)
       return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
@@ -72,7 +86,7 @@ export async function runSync(): Promise<SyncResult> {
     totalTransactionsAdded += added.length
   }
 
-  await logSync()
+  await logSync(triggeredBy)
 
   return {
     synced: true,

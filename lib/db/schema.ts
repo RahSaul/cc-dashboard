@@ -52,7 +52,10 @@ CREATE TABLE IF NOT EXISTS plaid_connections_log (
 );
 
 CREATE TABLE IF NOT EXISTS sync_log (
-  id        SERIAL PRIMARY KEY,
-  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id           SERIAL PRIMARY KEY,
+  triggered_by TEXT,
+  synced_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE sync_log ADD COLUMN IF NOT EXISTS triggered_by TEXT;
 `

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import AccountSelector from '@/components/dashboard/AccountSelector'
 import BalanceCard from '@/components/dashboard/BalanceCard'
@@ -10,14 +10,30 @@ import CategoryBreakdown from '@/components/dashboard/CategoryBreakdown'
 import RecentTransactions from '@/components/dashboard/RecentTransactions'
 import CardManagerModal from '@/components/dashboard/CardManagerModal'
 import { handleSignOut } from '@/app/actions/auth'
+import type { LastSyncInfo } from '@/types'
+
+function formatRelative(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diffMs / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  return hrs < 24 ? `${hrs}h ago` : `${Math.floor(hrs / 24)}d ago`
+}
 
 export default function Home() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [syncResult, setSyncResult] = useState<string | null>(null)
+  const [lastSync, setLastSync] = useState<LastSyncInfo | null>(null)
 
   const { data, isLoading, error, mutate } = useDashboardData(selectedAccountId)
+
+  useEffect(() => {
+    if (data?.lastSync) setLastSync(data.lastSync)
+  }, [data?.lastSync])
+
+  const isCoolingDown = (lastSync?.cooldownRemainingMs ?? 0) > 0
 
   function handleMutate() {
     setSelectedAccountId(null)
@@ -26,14 +42,13 @@ export default function Home() {
 
   async function handleSync() {
     setSyncing(true)
-    setSyncResult(null)
     try {
       const res = await fetch('/api/sync/trigger', { method: 'POST' })
       const json = await res.json()
-      setSyncResult(`${json.itemsProcessed} items · ${json.transactionsAdded} txns`)
+      if (json.lastSync) setLastSync(json.lastSync)
       mutate()
     } catch {
-      setSyncResult('Sync failed')
+      // sync failed — leave lastSync state as-is
     } finally {
       setSyncing(false)
     }
@@ -66,25 +81,33 @@ export default function Home() {
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             Dashboard
           </h1>
-          <div className="flex items-center gap-3">
-            {syncResult && (
-              <span className="text-xs text-zinc-400 dark:text-zinc-500">{syncResult}</span>
-            )}
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              {syncing ? 'Syncing…' : 'Sync'}
-            </button>
-            <form action={handleSignOut}>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-3">
               <button
-                type="submit"
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                onClick={handleSync}
+                disabled={syncing || isCoolingDown}
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                Sign out
+                {syncing ? 'Syncing…' : 'Sync'}
               </button>
-            </form>
+              <form action={handleSignOut}>
+                <button
+                  type="submit"
+                  className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
+            {lastSync && (
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                Last synced {formatRelative(lastSync.at)}
+                {lastSync.by ? ` by ${lastSync.by}` : ''}
+                {isCoolingDown
+                  ? ` · available in ${Math.ceil(lastSync.cooldownRemainingMs / 60_000)}m`
+                  : ''}
+              </p>
+            )}
           </div>
         </div>
 

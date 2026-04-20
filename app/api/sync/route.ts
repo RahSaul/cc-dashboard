@@ -20,6 +20,6 @@ async function handleSync(request: NextRequest): Promise<Response> {
     })
   }
 
-  const result = await runSync()
+  const result = await runSync('cron')
   return Response.json(result)
 }

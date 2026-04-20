@@ -46,10 +46,17 @@ export interface AggregateStats {
   totalAvailableCredit: number
 }
 
+export interface LastSyncInfo {
+  at: string
+  by: string | null
+  cooldownRemainingMs: number
+}
+
 export interface DashboardData {
   accounts: Account[]
   aggregate: AggregateStats
   recentTransactions: Transaction[]
   spendingByDay: SpendingByDay[]
   categoryBreakdown: CategoryBreakdown[]
+  lastSync: LastSyncInfo | null
 }

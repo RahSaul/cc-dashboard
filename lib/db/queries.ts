@@ -72,15 +72,24 @@ export async function countTodaySyncs(): Promise<number> {
   return rows[0].count
 }
 
-export async function getLastSyncTime(): Promise<Date | null> {
+export async function getLastSyncInfo(): Promise<{
+  synced_at: Date
+  triggered_by: string | null
+} | null> {
   const { rows } = await pool.query(
-    `SELECT MAX(synced_at) AS last_sync FROM sync_log`,
+    `SELECT synced_at, triggered_by
+     FROM sync_log
+     ORDER BY synced_at DESC
+     LIMIT 1`,
   )
-  return rows[0].last_sync ?? null
+  return rows[0] ?? null
 }
 
-export async function logSync(): Promise<void> {
-  await pool.query(`INSERT INTO sync_log DEFAULT VALUES`)
+export async function logSync(triggeredBy: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO sync_log (triggered_by) VALUES ($1)`,
+    [triggeredBy],
+  )
 }
 
 export async function deletePlaidItem(itemId: string): Promise<number> {
