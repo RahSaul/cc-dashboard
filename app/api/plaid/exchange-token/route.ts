@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { plaidClient } from '@/lib/plaid/client'
-import { upsertPlaidItem } from '@/lib/db/queries'
+import { upsertPlaidItem, countLifetimePlaidConnections, logPlaidConnection } from '@/lib/db/queries'
 
 export async function POST(request: NextRequest): Promise<Response> {
   const { public_token, institution_id, institution_name } =
@@ -11,6 +11,15 @@ export async function POST(request: NextRequest): Promise<Response> {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     })
+  }
+
+  const maxConnections = parseInt(process.env.MAX_LIFETIME_PLAID_CONNECTIONS ?? '10', 10)
+  const lifetimeCount = await countLifetimePlaidConnections()
+  if (lifetimeCount >= maxConnections) {
+    return Response.json(
+      { error: `Lifetime card connection limit (${maxConnections}) reached. Remove a card first.` },
+      { status: 409 },
+    )
   }
 
   const response = await plaidClient.itemPublicTokenExchange({
@@ -25,6 +34,8 @@ export async function POST(request: NextRequest): Promise<Response> {
     institution_id: institution_id ?? null,
     institution_name: institution_name ?? null,
   })
+
+  await logPlaidConnection()
 
   return Response.json({ success: true, item_id })
 }

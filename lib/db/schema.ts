@@ -45,4 +45,14 @@ CREATE INDEX IF NOT EXISTS idx_transactions_account_date
 
 CREATE INDEX IF NOT EXISTS idx_transactions_date
   ON transactions(date DESC);
+
+CREATE TABLE IF NOT EXISTS plaid_connections_log (
+  id           SERIAL PRIMARY KEY,
+  connected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sync_log (
+  id        SERIAL PRIMARY KEY,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `

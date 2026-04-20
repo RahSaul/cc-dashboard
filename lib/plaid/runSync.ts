@@ -5,6 +5,9 @@ import {
   upsertTransactions,
   deleteTransactions,
   updatePlaidItemCursor,
+  countTodaySyncs,
+  getLastSyncTime,
+  logSync,
 } from '@/lib/db/queries'
 
 export interface SyncResult {
@@ -15,6 +18,23 @@ export interface SyncResult {
 }
 
 export async function runSync(): Promise<SyncResult> {
+  const maxDailySyncs = parseInt(process.env.MAX_DAILY_SYNCS ?? '10', 10)
+  const todaySyncs = await countTodaySyncs()
+  if (todaySyncs >= maxDailySyncs) {
+    console.log(`[runSync] Daily sync cap (${maxDailySyncs}) reached`)
+    return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
+  }
+
+  const cooldownMs = parseInt(process.env.SYNC_COOLDOWN_MINUTES ?? '30', 10) * 60_000
+  const lastSync = await getLastSyncTime()
+  if (lastSync) {
+    const ageMs = Date.now() - lastSync.getTime()
+    if (ageMs < cooldownMs) {
+      console.log(`[runSync] Cooldown active — last sync was ${Math.round(ageMs / 60_000)}m ago`)
+      return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
+    }
+  }
+
   const items = await getAllPlaidItems()
 
   if (items.length === 0) {
@@ -51,6 +71,8 @@ export async function runSync(): Promise<SyncResult> {
 
     totalTransactionsAdded += added.length
   }
+
+  await logSync()
 
   return {
     synced: true,

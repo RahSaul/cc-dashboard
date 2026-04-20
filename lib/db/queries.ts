@@ -52,6 +52,37 @@ export async function updatePlaidItemCursor(
   )
 }
 
+export async function countLifetimePlaidConnections(): Promise<number> {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM plaid_connections_log`,
+  )
+  return rows[0].count
+}
+
+export async function logPlaidConnection(): Promise<void> {
+  await pool.query(`INSERT INTO plaid_connections_log DEFAULT VALUES`)
+}
+
+export async function countTodaySyncs(): Promise<number> {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM sync_log
+     WHERE synced_at >= date_trunc('day', NOW())`,
+  )
+  return rows[0].count
+}
+
+export async function getLastSyncTime(): Promise<Date | null> {
+  const { rows } = await pool.query(
+    `SELECT MAX(synced_at) AS last_sync FROM sync_log`,
+  )
+  return rows[0].last_sync ?? null
+}
+
+export async function logSync(): Promise<void> {
+  await pool.query(`INSERT INTO sync_log DEFAULT VALUES`)
+}
+
 export async function deletePlaidItem(itemId: string): Promise<number> {
   const { rowCount } = await pool.query(
     `DELETE FROM plaid_items WHERE id = $1`,
