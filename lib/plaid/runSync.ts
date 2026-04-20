@@ -32,18 +32,18 @@ export function buildLastSyncInfo(
 }
 
 export async function runSync(triggeredBy: string): Promise<SyncResult> {
-  const maxDailySyncs = parseInt(process.env.MAX_DAILY_SYNCS ?? '10', 10)
-  const todaySyncs = await countTodaySyncs()
-  if (todaySyncs >= maxDailySyncs) {
-    console.log(`[runSync] Daily sync cap (${maxDailySyncs}) reached`)
-    return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
-  }
-
   const items = await getAllPlaidItems()
 
   const hasNewItems = items.some((item) => !item.last_synced_at)
 
   if (!hasNewItems) {
+    const maxDailySyncs = parseInt(process.env.MAX_DAILY_SYNCS ?? '10', 10)
+    const todaySyncs = await countTodaySyncs()
+    if (todaySyncs >= maxDailySyncs) {
+      console.log(`[runSync] Daily sync cap (${maxDailySyncs}) reached`)
+      return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
+    }
+
     const cooldownMs = parseInt(process.env.SYNC_COOLDOWN_MINUTES ?? '30', 10) * 60_000
     const lastSyncRow = await getLastSyncInfo()
     if (lastSyncRow) {
