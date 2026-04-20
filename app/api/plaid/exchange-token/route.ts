@@ -17,7 +17,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   const lifetimeCount = await countLifetimePlaidConnections()
   if (lifetimeCount >= maxConnections) {
     return Response.json(
-      { error: `Lifetime card connection limit (${maxConnections}) reached. Remove a card first.` },
+      { error: `Card connection limit (${maxConnections}) reached. Contact your admin to increase the limit.` },
       { status: 409 },
     )
   }
