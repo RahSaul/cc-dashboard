@@ -25,6 +25,7 @@ export default function Home() {
   const [manageOpen, setManageOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState<LastSyncInfo | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   const { data, isLoading, error, mutate } = useDashboardData(selectedAccountId)
 
@@ -41,13 +42,15 @@ export default function Home() {
 
   async function handleSync() {
     setSyncing(true)
+    setSyncError(null)
     try {
       const res = await fetch('/api/sync/trigger', { method: 'POST' })
       const json = await res.json()
       if (json.lastSync) setLastSync(json.lastSync)
+      if (json.reason === 'cap_reached') setSyncError('Daily sync limit reached. Try again tomorrow.')
       mutate()
     } catch {
-      // sync failed — leave lastSync state as-is
+      setSyncError('Sync failed. Please try again.')
     } finally {
       setSyncing(false)
     }
@@ -98,7 +101,10 @@ export default function Home() {
                 </button>
               </form>
             </div>
-            {lastSync && (
+            {syncError && (
+              <p className="text-xs text-red-500">{syncError}</p>
+            )}
+            {!syncError && lastSync && (
               <p className="text-xs text-zinc-400 dark:text-zinc-500">
                 Last synced {formatRelative(lastSync.at)}
                 {lastSync.by ? ` by ${lastSync.by}` : ''}

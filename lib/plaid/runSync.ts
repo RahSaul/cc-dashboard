@@ -13,6 +13,7 @@ import type { LastSyncInfo } from '@/types'
 
 export interface SyncResult {
   synced: boolean
+  reason?: 'cap_reached' | 'cooldown'
   itemsProcessed: number
   accountsUpdated: number
   transactionsAdded: number
@@ -41,7 +42,7 @@ export async function runSync(triggeredBy: string): Promise<SyncResult> {
     const todaySyncs = await countTodaySyncs()
     if (todaySyncs >= maxDailySyncs) {
       console.log(`[runSync] Daily sync cap (${maxDailySyncs}) reached`)
-      return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
+      return { synced: false, reason: 'cap_reached', itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
     }
 
     const cooldownMs = parseInt(process.env.SYNC_COOLDOWN_MINUTES ?? '30', 10) * 60_000
@@ -50,7 +51,7 @@ export async function runSync(triggeredBy: string): Promise<SyncResult> {
       const ageMs = Date.now() - lastSyncRow.synced_at.getTime()
       if (ageMs < cooldownMs) {
         console.log(`[runSync] Cooldown active — last sync was ${Math.round(ageMs / 60_000)}m ago`)
-        return { synced: false, itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
+        return { synced: false, reason: 'cooldown', itemsProcessed: 0, accountsUpdated: 0, transactionsAdded: 0 }
       }
     }
   }

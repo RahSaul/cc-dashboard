@@ -34,10 +34,13 @@ export default function PlaidLinkButton({ onSuccess }: PlaidLinkButtonProps) {
             institution_name: metadata.institution?.name ?? null,
           }),
         })
-        if (!res.ok) throw new Error('Token exchange failed')
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error ?? 'Failed to connect account.')
+        }
         onSuccess()
-      } catch {
-        setError('Failed to connect account. Please try again.')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to connect account. Please try again.')
       } finally {
         setLoading(false)
       }
