@@ -15,9 +15,12 @@ export default function PlaidLinkButton({ onSuccess }: PlaidLinkButtonProps) {
 
   useEffect(() => {
     fetch('/api/plaid/create-link-token', { method: 'POST' })
-      .then((res) => res.json())
-      .then((data) => setLinkToken(data.link_token))
-      .catch(() => setError('Failed to initialise Plaid Link'))
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? 'Failed to initialise Plaid Link')
+        setLinkToken(data.link_token)
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to initialise Plaid Link'))
   }, [])
 
   const handleSuccess = useCallback<PlaidLinkOnSuccess>(
