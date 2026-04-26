@@ -1,15 +1,13 @@
 import type { Config } from 'jest'
-import nextJest from 'next/jest.js'
 
-const createJestConfig = nextJest({ dir: './' })
-
+// Each project has its own config file so it gets the correct
+// Next.js SWC transform and testEnvironment independently.
 const config: Config = {
+  projects: [
+    '<rootDir>/jest.unit.config.ts',
+    '<rootDir>/jest.integration.config.ts',
+  ],
   coverageProvider: 'v8',
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
-  },
 }
 
-export default createJestConfig(config)
+export default config
