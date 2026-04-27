@@ -11,7 +11,8 @@
     "test:watch": "jest --selectProjects unit --watch",
     "test:integration": "jest --selectProjects integration --runInBand",
     "test:all": "jest --runInBand",
-    "test:coverage": "jest --selectProjects unit --coverage"
+    "test:coverage": "jest --selectProjects unit --coverage",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",

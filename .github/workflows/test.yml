@@ -1,0 +1,48 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm test
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    # ubuntu-latest runners have Docker pre-installed.
+    # Testcontainers manages the Postgres container lifecycle itself —
+    # no services: block needed.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run test:integration
+        env:
+          # Testcontainers needs to reach the Docker daemon.
+          # On ubuntu-latest this works without extra config, but setting
+          # DOCKER_HOST explicitly prevents issues if the runner changes.
+          DOCKER_HOST: unix:///var/run/docker.sock
+          # Suppress Testcontainers' startup banner in CI logs.
+          TESTCONTAINERS_RYUK_DISABLED: 'false'
